@@ -13,31 +13,34 @@ def fetchdata():
 	cursor = connection.cursor()
 
 	SQLCommand = ("""
-        SELECT
-        DW.[API],
-        DW.[WellName],
-        DW.[Route],
-        DW.[FirstProductionDate],
-        DE.EVENT_ID as Event_ID,
-        DD.[Daily_ID] as Daily_ID,
-        DE.[Event_Objective_1] as [WorkOver_Type],
-        DE.[Event_Code] as [WorkOver_Code],
-        DE.[DATE_OPS_START] as [Start_Date],
-        DE.[DATE_OPS_END] as [End_Date],
-        DD.[Date_Report],
-        DD.[Comment_Summary],
-        DA.[Activity_Memo]
-        From OperationsDataMart.Dimensions.Wells as DW
-        inner join EDW.OpenWells.CD_Well as CW on Left(CW.API_NO,10)=DW.[API]
-        inner join EDW.OpenWells.DM_EVENT as DE on CW.[Well_ID]=DE.[Well_ID]
-        Inner join EDW.OpenWells.DM_Daily as DD on DE.[Well_ID]=DD.[Well_ID] and DE.[Event_ID]=DD.[Event_ID]
-        Inner join EDW.OpenWells.DM_Activity as DA on DD.[Well_ID]=DA.[Well_ID] and DD.[Event_ID]=DA.[Event_ID] and DD.[Daily_ID]=DA.[Daily_ID]
-
-
-        where
-
-        DW.[BusinessUnit] like 'North' and
-        (DE.[Event_Code] in ('WLI', 'SLK', 'WO', 'WS') or DE.[Event_Type] in ('Workover', 'Slickline', 'Well Integrity', 'Well Servicing'))
+        SELECT	DW.API,
+		        DW.WellName,
+		        DW.Route,
+		        DW.FirstProductionDate,
+		        DE.EVENT_ID AS Event_ID,
+		        DD.Daily_ID AS Daily_ID,
+		        DE.Event_Objective_1 AS WorkOver_Type,
+		        DE.Event_Code AS WorkOver_Code,
+		        DE.DATE_OPS_START AS Start_Date,
+		        DE.DATE_OPS_END AS End_Date,
+		        DD.Date_Report,
+		        DD.Comment_Summary,
+		        DA.Activity_Memo
+        FROM [OperationsDataMart].[Dimensions].[Wells] AS DW
+        INNER JOIN [EDW].[OpenWells].[CD_Well] AS CW
+			ON LEFT(CW.API_NO, 10) = DW.API
+        INNER JOIN [EDW].[OpenWells].[DM_EVENT] AS DE
+			ON CW.Well_ID = DE.Well_ID
+        INNER JOIN [EDW].[OpenWells].[DM_Daily] AS DD
+			ON DE.Well_ID = DD.Well_ID
+			AND DE.Event_ID = DD.Event_ID
+        INNER JOIN [EDW].[OpenWells].[DM_Activity] AS DA
+			ON DD.Well_ID = DA.Well_ID
+			AND DD.Event_ID = DA.Event_ID
+			AND DD.Daily_ID = DA.Daily_ID
+        WHERE	DW.BusinessUnit LIKE 'North'
+          AND	(DE.Event_Code IN ('WLI', 'SLK', 'WO', 'WS')
+		   		OR DE.Event_Type IN ('Workover', 'Slickline', 'Well Integrity', 'Well Servicing'))
 	""")
 
 	cursor.execute(SQLCommand)
