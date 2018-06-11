@@ -499,6 +499,8 @@ if __name__ == '__main__':
     result, model, score, pred, recall, precision = \
         dive(X_train, X_test, y_train, y_test, classed, allall_data)
 
+    result.to_csv('data/North_WO_predictions.csv')
+
     # #look at the distribution of Root_Cause types (total)
     # result_counts_base = pd.DataFrame(result['Root_Cause'].value_counts())
     # result_counts_base.to_csv('Base_result_counts.csv')
