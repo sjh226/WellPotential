@@ -16,7 +16,7 @@ from nltk import pos_tag
 from string import digits
 import string
 from matplotlib.ticker import FuncFormatter, MultipleLocator
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, KFold
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.decomposition import NMF as NMF_sklearn
 from sklearn.linear_model import RidgeClassifier
@@ -192,29 +192,38 @@ def classifier_process(df, use_stemmer=False, remove=False, y_label='Class', \
     y = df[y_label]
 
     # Split data, currently on an 80/20 split
+    kf = KFold(6)
+    for train_index, test_index in kf.split(X):
+        X_train, X_test = X[train_index], X[test_index]
+        y_train, y_test = y[train_index], y[test_index]
+
+        tokenizer = RegexpTokenizer("[\w']+")
+        stem = PorterStemmer().stem if use_stemmer else (lambda x: x)
+        stop_set = set(stopwords.words('english'))
+
+        # Closure over the tokenizer et al.
+        def tokenize_and_stem(text, chi2_k = False):
+            tokens = tokenizer.tokenize(text)
+            stems = [stem(token) for token in tokens if token not in stop_set]
+            return stems
+
+        vectorizer_model = TfidfVectorizer(max_df=1.0, max_features=200000, \
+                                           min_df=0, stop_words='english', \
+                                           use_idf=True, tokenizer=tokenize_and_stem, \
+                                           ngram_range=(1,3))
+
+        X_train = vectorizer_model.fit_transform(X_train)
+        X_test = vectorizer_model.transform(X_test)
+
+        # Mapping from integer feature name to original token string
+        feature_names = vectorizer_model.get_feature_names()
+
+        result, model, score, pred, recall, precision = \
+            dive(X_train, X_test, y_train, y_test, df2, vectorizer_model.transform(df2['All_Comments']))
+        print('Score: {}\nRecall: {}\nPrecision: {}\n--------------------'.format(score, recall, precision))
+
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, \
                                                         random_state=1, stratify=y)
-
-    tokenizer = RegexpTokenizer("[\w']+")
-    stem = PorterStemmer().stem if use_stemmer else (lambda x: x)
-    stop_set = set(stopwords.words('english'))
-
-    # Closure over the tokenizer et al.
-    def tokenize_and_stem(text, chi2_k = False):
-        tokens = tokenizer.tokenize(text)
-        stems = [stem(token) for token in tokens if token not in stop_set]
-        return stems
-
-    vectorizer_model = TfidfVectorizer(max_df=1.0, max_features=200000, \
-                                       min_df=0, stop_words='english', \
-                                       use_idf=True, tokenizer=tokenize_and_stem, \
-                                       ngram_range=(1,3))
-
-    X_train = vectorizer_model.fit_transform(X_train)
-    X_test = vectorizer_model.transform(X_test)
-
-    # Mapping from integer feature name to original token string
-    feature_names = vectorizer_model.get_feature_names()
 
     try:
         if df2.shape[0] > 1:
@@ -232,8 +241,8 @@ def clean_string(comments):
 
     return re.sub(r'/[^\w\s]|_/g', ' ', comments2)
 
-def benchmark(clf, X_train, X_test, y_train, y_test, print_report=False, \
-              print_cm=False, print_top10=False, feature_names=False, \
+def benchmark(clf, X_train, X_test, y_train, y_test, print_report=False,
+              print_cm=False, print_top10=False, feature_names=False,
               target_names=False, clf_name=None):
     print('_' * 80)
     print("Training: ")
@@ -467,6 +476,7 @@ if __name__ == '__main__':
     # Run SQL query to fetch work over reports
     df = fetchdata()
     df.to_csv('data/North_WO_Text.csv')
+    # df = pd.read_csv('data/North_WO_Text.csv')
 
     grouped_event = event_group(df)
     grouped_event.columns = grouped_event.columns.get_level_values(0)
