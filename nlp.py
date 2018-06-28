@@ -193,9 +193,13 @@ def classifier_process(df, use_stemmer=False, remove=False, y_label='Class', \
 
     # Split data, currently on an 80/20 split
     kf = KFold(6)
+    fold_df = pd.DataFrame(columns=['fold', 'score', 'recall', 'precision'])
+    i = 0
     for train_index, test_index in kf.split(X):
         X_train, X_test = X[train_index], X[test_index]
         y_train, y_test = y[train_index], y[test_index]
+
+        i += 1
 
         tokenizer = RegexpTokenizer("[\w']+")
         stem = PorterStemmer().stem if use_stemmer else (lambda x: x)
@@ -220,21 +224,28 @@ def classifier_process(df, use_stemmer=False, remove=False, y_label='Class', \
 
         result, model, score, pred, recall, precision = \
             dive(X_train, X_test, y_train, y_test, df2, vectorizer_model.transform(df2['All_Comments']))
-        print('Score: {}\nRecall: {}\nPrecision: {}\n--------------------'.format(score, recall, precision))
+        fold_df = fold_df.append(pd.DataFrame([[i, score, recall, precision]],
+                                              columns=['fold', 'score', 'recall', 'precision']))
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, \
-                                                        random_state=1, stratify=y)
+    print('Score: {}\nRecall: {}\nPrecision: {}\n--------------------'
+                  .format(fold_df['score'].mean(),
+                          fold_df['recall'].mean(),
+                          fold_df['precision'].mean()))
+    fold_df.to_csv('data/metics.csv')
 
-    try:
-        if df2.shape[0] > 1:
-            return X_train, X_test, y_train, y_test, feature_names, \
-                   vectorizer_model.transform(df['All_Comments']), \
-                   vectorizer_model.transform(df2['All_Comments'])
-    except:
-        pass
-
-    return X_train, X_test, y_train, y_test, feature_names, \
-           vectorizer_model.transform(df['All_Comments'])
+    # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, \
+    #                                                     random_state=1, stratify=y)
+    #
+    # try:
+    #     if df2.shape[0] > 1:
+    #         return X_train, X_test, y_train, y_test, feature_names, \
+    #                vectorizer_model.transform(df['All_Comments']), \
+    #                vectorizer_model.transform(df2['All_Comments'])
+    # except:
+    #     pass
+    #
+    # return X_train, X_test, y_train, y_test, feature_names, \
+    #        vectorizer_model.transform(df['All_Comments'])
 
 def clean_string(comments):
     comments2 = "".join([ch for ch in str(comments) if ch not in string.punctuation])
@@ -371,7 +382,7 @@ def EDA_seaborn(df, label, filename = 'histogram.png', color_labels = None):
 def dive(X_train, X_test, y_train, y_test, df, data):
     # Train and predict using a perceptron based on the comments provided
     # whether the work over contains an integrity issue
-    clf = Perceptron(n_iter=100, random_state = 1, class_weight = 'balanced')
+    clf = Perceptron(penalty='l2', n_iter=100, random_state=1, class_weight='balanced')
     clf.fit(X_train, y_train)
     pred = clf.predict(X_test)
 
