@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 import sys
 import pyodbc
+import urllib
+import sqlalchemy
 
 def fetchdata():
 	connection = pyodbc.connect(r'Driver={SQL Server Native Client 11.0};'
@@ -56,6 +58,18 @@ def fetchdata():
 	connection.close()
 
 	return df
+
+
+def sql_push(df, table):
+    params = urllib.parse.quote_plus('Driver={SQL Server Native Client 11.0};\
+									 Server=SQLDW-L48.BP.Com;\
+									 Database=TeamOperationsAnalytics;\
+     								 trusted_connection=yes
+                                     )
+    engine = sqlalchemy.create_engine('mssql+pyodbc:///?odbc_connect=%s' % params)
+
+    df.to_sql(table, engine, schema='dbo', if_exists='append', index=False)
+
 
 if __name__ == '__main__':
     df = fetchdata()

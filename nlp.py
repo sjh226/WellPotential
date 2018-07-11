@@ -29,7 +29,7 @@ from sklearn import metrics
 from sklearn.utils.extmath import density
 from matplotlib.ticker import FuncFormatter, MaxNLocator, AutoMinorLocator
 import seaborn as sns
-from sql_pull import fetchdata
+from sql_script import fetchdata, sql_push
 
 
 def root_group(df):
@@ -195,6 +195,7 @@ def classifier_process(df, use_stemmer=False, remove=False, y_label='Class', \
     kf = KFold(6)
     fold_df = pd.DataFrame(columns=['fold', 'score', 'recall', 'precision'])
     i = 0
+    best = 0
     for train_index, test_index in kf.split(X):
         X_train, X_test = X[train_index], X[test_index]
         y_train, y_test = y[train_index], y[test_index]
@@ -226,6 +227,8 @@ def classifier_process(df, use_stemmer=False, remove=False, y_label='Class', \
             dive(X_train, X_test, y_train, y_test, df2, vectorizer_model.transform(df2['All_Comments']))
         fold_df = fold_df.append(pd.DataFrame([[i, score, recall, precision]],
                                               columns=['fold', 'score', 'recall', 'precision']))
+        if score > best:
+            X_tr, X_tes, y_tr, y_tes, feat_name = X_train, X_test, y_train, y_test, feature_names
 
     print('Score: {}\nRecall: {}\nPrecision: {}\n--------------------'
                   .format(fold_df['score'].mean(),
@@ -235,17 +238,17 @@ def classifier_process(df, use_stemmer=False, remove=False, y_label='Class', \
 
     # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, \
     #                                                     random_state=1, stratify=y)
-    #
-    # try:
-    #     if df2.shape[0] > 1:
-    #         return X_train, X_test, y_train, y_test, feature_names, \
-    #                vectorizer_model.transform(df['All_Comments']), \
-    #                vectorizer_model.transform(df2['All_Comments'])
-    # except:
-    #     pass
-    #
-    # return X_train, X_test, y_train, y_test, feature_names, \
-    #        vectorizer_model.transform(df['All_Comments'])
+
+    try:
+        if df2.shape[0] > 1:
+            return X_tr, X_tes, y_tr, y_tes, feat_name, \
+                   vectorizer_model.transform(df['All_Comments']), \
+                   vectorizer_model.transform(df2['All_Comments'])
+    except:
+        pass
+
+    return X_train, X_test, y_train, y_test, feature_names, \
+           vectorizer_model.transform(df['All_Comments'])
 
 def clean_string(comments):
     comments2 = "".join([ch for ch in str(comments) if ch not in string.punctuation])
@@ -508,6 +511,9 @@ if __name__ == '__main__':
     merge_root = pd.merge(classed, root3, on = ['Event_API'])
 
     # Split into train and test based on RE/NLP analysis
+    # result, model, score, pred, recall, precision = \
+    #     classifier_process(merge_root, remove=False, y_label='RootCause_Integ', \
+    #                        text_label='Activity_Memo', df2=classed)
     X_train, X_test, y_train, y_test, feature_name, all_data, allall_data = \
         classifier_process(merge_root, remove=False, y_label='RootCause_Integ', \
                            text_label='Activity_Memo', df2=classed)
@@ -521,6 +527,8 @@ if __name__ == '__main__':
         dive(X_train, X_test, y_train, y_test, classed, allall_data)
 
     result.to_csv('data/North_WO_predictions.csv')
+
+    sql_push(result, 'WellIntegrity')
 
     # #look at the distribution of Root_Cause types (total)
     # result_counts_base = pd.DataFrame(result['Root_Cause'].value_counts())
