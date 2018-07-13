@@ -64,7 +64,7 @@ def sql_push(df, table):
     params = urllib.parse.quote_plus('Driver={SQL Server Native Client 11.0};\
 									 Server=SQLDW-L48.BP.Com;\
 									 Database=TeamOperationsAnalytics;\
-     								 trusted_connection=yes
+     								 trusted_connection=yes'
                                      )
     engine = sqlalchemy.create_engine('mssql+pyodbc:///?odbc_connect=%s' % params)
 
