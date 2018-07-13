@@ -526,9 +526,13 @@ if __name__ == '__main__':
     result, model, score, pred, recall, precision = \
         dive(X_train, X_test, y_train, y_test, classed, allall_data)
 
-    result.to_csv('data/North_WO_predictions.csv')
+    s_result = result.loc[:, ['index', 'Event_API', 'Daily_ID', 'API', 'WellName',
+                              'Route', 'FirstProductionDate', 'WorkOver_Code',
+                              'Date_Report', 'Event_ID', 'Class',
+                              'Integ_Issue_Prediction']]
+    s_result.to_csv('data/North_WO_predictions.csv')
 
-    sql_push(result, 'WellIntegrity')
+    sql_push(s_result, 'WellIntegrity')
 
     # #look at the distribution of Root_Cause types (total)
     # result_counts_base = pd.DataFrame(result['Root_Cause'].value_counts())
